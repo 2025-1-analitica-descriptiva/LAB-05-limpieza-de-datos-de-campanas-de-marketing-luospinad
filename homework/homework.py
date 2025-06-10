@@ -4,6 +4,9 @@ Escriba el codigo que ejecute la accion solicitada.
 
 # pylint: disable=import-outside-toplevel
 
+import glob
+import pandas as pd
+import os
 
 def clean_campaign_data():
     """
@@ -50,7 +53,69 @@ def clean_campaign_data():
 
     """
 
+    file_path = 'files/input'
+    dataframes = load_input(file_path)
+    combinados_df = pd.concat(dataframes.values(), ignore_index=True)
+
+    client_cols = ['client_id', 'age', 'job', 'marital', 'education', 'credit_default', 'mortgage']
+    campaign_cols = ['client_id', 'number_contacts', 'contact_duration', 'previous_campaign_contacts', 'previous_outcome', 'campaign_outcome']
+    economics_cols = ['client_id', 'cons_price_idx', 'euribor_three_months']
+
+    client_df = combinados_df[client_cols].copy()
+    campaign_df = combinados_df[campaign_cols].copy()
+    economics_df = combinados_df[economics_cols].copy()
+
+
+    # Formateo campos de client_df
+    client_df.loc[:, 'job'] = client_df['job'].str.replace('.', '').str.replace('-','_')
+    client_df.loc[:, 'education'] = client_df['education'].replace('unknown', pd.NA)
+    # convertir yes a 1, lo otro a 0
+    client_df.loc[:, 'credit_default'] = client_df['credit_default'].apply(lambda x: '1' if x == 'yes' else '0')
+    client_df.loc[:, 'mortgage'] = client_df['mortgage'].apply(lambda x: '1' if x == 'yes' else '0')
+
+
+    # Formateo campos campaign
+    campaign_df.loc[:, 'previous_outcome'] = campaign_df['previous_outcome'].apply(lambda x: '1' if x == 'success' else '0')
+    campaign_df.loc[:, 'campaign_outcome'] = campaign_df['campaign_outcome'].apply(lambda x: '1' if x == 'yes' else '0')
+        
+    combinados_df['day'] = combinados_df['day'].astype(str).str.zfill(2)
+    combinados_df['fecha_str'] = combinados_df['day'] + ' ' + combinados_df['month'].str.lower() + ' 2022'
+    campaign_df['last_contact_day'] = pd.to_datetime(combinados_df['fecha_str'], dayfirst=True).dt.strftime('%Y-%m-%d')
+
+    campaign_df['last_contact_day'] = pd.to_datetime(
+        combinados_df['fecha_str'],
+        format='%d %b %Y'
+    ).dt.strftime('%Y-%m-%d')
+
+
+    # Formateo economics
+    economics_df.rename(columns={
+        'cons_price_idx': 'const_price_idx',
+        'euribor_three_months': 'eurobor_three_months'
+    }, inplace=True)
+
+
+    
+    output_path = 'files/output'
+    os.makedirs(output_path, exist_ok=True)
+    
+    # Guardar en csv
+    client_df.to_csv(f'{output_path}/client.csv', index=False)
+    campaign_df.to_csv(f'{output_path}/campaign.csv', index=False)
+    economics_df.to_csv(f'{output_path}/economics.csv', index=False)
+
     return
+
+def load_input(input_directory):
+    """Load text files in 'input_directory/'"""
+
+    files = glob.glob(f"{input_directory}/*")
+    dataframes = {
+        os.path.basename(file): pd.read_csv(file, index_col=None)
+        for file in files
+    }
+
+    return dataframes
 
 
 if __name__ == "__main__":
