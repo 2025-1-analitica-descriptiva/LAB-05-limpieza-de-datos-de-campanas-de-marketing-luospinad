@@ -68,6 +68,7 @@ def clean_campaign_data():
 
     # Formateo campos de client_df
     client_df.loc[:, 'job'] = client_df['job'].str.replace('.', '').str.replace('-','_')
+    client_df.loc[:, 'education'] = client_df['education'].str.replace('.', '_')
     client_df.loc[:, 'education'] = client_df['education'].replace('unknown', pd.NA)
     # convertir yes a 1, lo otro a 0
     client_df.loc[:, 'credit_default'] = client_df['credit_default'].apply(lambda x: '1' if x == 'yes' else '0')
@@ -80,20 +81,12 @@ def clean_campaign_data():
         
     combinados_df['day'] = combinados_df['day'].astype(str).str.zfill(2)
     combinados_df['fecha_str'] = combinados_df['day'] + ' ' + combinados_df['month'].str.lower() + ' 2022'
-    campaign_df['last_contact_day'] = pd.to_datetime(combinados_df['fecha_str'], dayfirst=True).dt.strftime('%Y-%m-%d')
+    campaign_df['last_contact_date'] = pd.to_datetime(combinados_df['fecha_str'], dayfirst=True).dt.strftime('%Y-%m-%d')
 
-    campaign_df['last_contact_day'] = pd.to_datetime(
+    campaign_df['last_contact_date'] = pd.to_datetime(
         combinados_df['fecha_str'],
         format='%d %b %Y'
     ).dt.strftime('%Y-%m-%d')
-
-
-    # Formateo economics
-    economics_df.rename(columns={
-        'cons_price_idx': 'const_price_idx',
-        'euribor_three_months': 'eurobor_three_months'
-    }, inplace=True)
-
 
     
     output_path = 'files/output'
